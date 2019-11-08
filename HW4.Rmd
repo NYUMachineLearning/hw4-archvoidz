@@ -164,6 +164,47 @@ importance(rfmodel)
 
 1. Compare the most important features from at least 2 different classes of feature selection methods covered in this tutorial with any reasonable machine learning dataset from mlbench. Do these feature selection methods provide similar results? 
 
+The two chosen methods were correlation and creating a varImpPlot after creating a Random Forest model. I didn't use the exact methods that the tutorial went over due to using a different dataset and predicting for a continuous variable. The top correlated factors of crime rate were rad, tax, lstat, and nox although the other factors were not far behind. More information as to which variables are important can likely be conducted by using step-wise variable selection methods to determine the best linear regression model for each n-variable regression. The R-squared values of these models would also give indication as to which variable we should stop at if adding that variable does not lead to a dramatic increase in R-squared value. 
+
+The variable importance plot for the random forest model returned rad as the most important variable if one considers reducing mean squared error to be of importance. When considering information gain, medv becomes the most important variable. The top 3 factors, in terms of lowering MSE, is rad, medv, and tax. This agrees, in part, with the values for correlation with rad and tax being selected. 
+
+```{r}
+#Using Correlation
+library(corrplot)
+data(BostonHousing)
+df = BostonHousing
+colnames(df)
+
+df[is.na(df)] = 0
+
+correlation_matrix = cor(df[,c(1:3, 5:13)])
+correlation_crim = correlation_matrix[,1]
+correlation_crim_sorted = sort(correlation_crim, decreasing = T)
+correlation_crim_sorted
+
+#Using varimp plot after Random Forest model
+train_size <- floor(0.70 * nrow(df))
+train_pos <- sample(seq_len(nrow(df)), size = train_size)
+
+train_classification <- df[train_pos, ]
+test_classification <- df[-train_pos, ]
+
+rfmodel = randomForest(crim ~ ., data=train_classification,  importance = TRUE, oob.times = 15, confusion = TRUE)
+
+varImpPlot(rfmodel)
+```
+
 2. Attempt a feature selection method not covered in this tutorial (backward elimination, forward propogation, etc.)
 
+R has a convinient function stepAIC within the MASS package. It performs stepwise selection for regression models with the option to select direction. In this case, I selected both, essentially a hybrid of forward and backward due to forward propogation being overly dependent on the best n-1 variable model to decide on the best n variable model and backward elimination has a high chance of false discoveries depending on what the p-value cut off for removing a variable to be. Hybrid selection accomadates for some of the issues present in both selection methods however, step-wise selection methods seem to receive a decent amount of critique lately due to high bias, reliance on p-values, and that parameter estimates are biased away from 0. However, due to their relatively simplistic and straight forward application, they offer a quick and dirty way for selecting important variables for linear regression problems. 
 
+```{r}
+library(MASS)
+
+full.model <- lm(crim ~., data = df)
+
+step.model <- stepAIC(full.model, direction = "both", 
+                      trace = FALSE)
+summary(step.model)
+
+```
