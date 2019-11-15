@@ -203,6 +203,9 @@ Given the few amount of nodes on a regression problem, we would expect that the 
 In terms of variable importance, a plot of the tree shows that ShellWeight was the major deciding factor and goes two levels deep while Shucked Weight is the next most important factor. Overall, a deeper model would likely result in better metrics although may lead to higher variance as well due to overfitting. It is likely not a good idea to run a simple decision tree for a regression problem and would be benefitted greatly from bagging/boosting methods. 
 
 ```{r}
+library(PivotalR)
+data(abalone)
+
 library(rpart)
 #Creating Regression Tree 
 tree.model = rpart(Rings ~ ., data = abalone,method = "anova", control = rpart.control(cp = .0001))
@@ -221,5 +224,32 @@ printcp(pfit)
 
 2. Attempt both a bagging and boosting method on a reasonable dataset of your choice. Explain the results.
 
+```{r}
+abalone = abalone[-1]
+abalone$sex = factor(abalone$sex)
+nums = sample(1:nrow(abalone), floor(nrow(abalone)*.7))
+train = abalone[nums,]
+test = abalone[-nums,]
 
+
+#fit training subset of data to model 
+rf.abalone = randomForest(sex ~ ., data = train)
+rf.boston
+
+#Creating lists to store oob error and test error
+oob.err = double(ncol(train))
+test.err = double(ncol(train))
+
+#In a loop of mtry from 1 to 13, you first fit the randomForest to the train dataset
+for(mtry in 1:13){
+  fit = randomForest(sex ~ ., data = train, mtry=mtry, ntree = 350)
+  oob.err[mtry] = fit$err.rate[350,1] ##extract Mean-squared-error 
+  pred = predict(fit, test) #predict on test dataset
+  test.err[mtry] = with(test, mean( (medv-pred)^2 )) #compute test error
+}
+
+library(pROC)
+roc(test$sex,pred)
+
+```
 
