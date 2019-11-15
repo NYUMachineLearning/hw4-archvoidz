@@ -224,32 +224,36 @@ printcp(pfit)
 
 2. Attempt both a bagging and boosting method on a reasonable dataset of your choice. Explain the results.
 
+From the random forest (bagging method), it appears that the lowest oob error rate comes from including all of the variables which would theoretically make sense given that we are fitting the data closer to the training sample. Bagging reduces variance within a model by nature of bootstrapping samples as well as factors to use so this overfitting should be compensated for. 
+
+The minimizing of the cost function for decision trees uses Gini index which essentially denotes node purity with a Gini index of 0 being most pure. The cost function considers the Gini Index of both nodes that result at a split as well as the proportion of cases within each node. In this case, the variable importance plot shows us viscera and whole were the most important variables in minimizing the cost function. Taking them out would reduce node purity significantly and so, they can be interpreted as the most important variables in predicting for sex of abalones.
+
+Although newer methods such as XGBoost have demonstrated greater power over more traditional boosting methods, traditional gradient boosting still remains a strong method for reducing bias within decision tree based models. The boosting algorithm once again shows us that shucked and whole were the two most important variables to the model. 
+
 ```{r}
 abalone = abalone[-1]
 abalone$sex = factor(abalone$sex)
-nums = sample(1:nrow(abalone), floor(nrow(abalone)*.7))
-train = abalone[nums,]
-test = abalone[-nums,]
-
 
 #fit training subset of data to model 
 rf.abalone = randomForest(sex ~ ., data = train)
-rf.boston
 
 #Creating lists to store oob error and test error
-oob.err = double(ncol(train))
-test.err = double(ncol(train))
+oob.err = double(ncol(abalone))
 
 #In a loop of mtry from 1 to 13, you first fit the randomForest to the train dataset
-for(mtry in 1:13){
+for(mtry in 1:ncol(abalone)){
   fit = randomForest(sex ~ ., data = train, mtry=mtry, ntree = 350)
   oob.err[mtry] = fit$err.rate[350,1] ##extract Mean-squared-error 
-  pred = predict(fit, test) #predict on test dataset
-  test.err[mtry] = with(test, mean( (medv-pred)^2 )) #compute test error
 }
 
-library(pROC)
-roc(test$sex,pred)
+oob.err == max(oob.err)
 
+varImpPlot(rf.abalone)
+
+
+#Boosting
+boost = gbm(sex~., data = abalone, distribution = "gaussian", n.trees = 10000, shrinkage = 0.01, interaction.depth = 4)
+
+summary(boost)
 ```
 
